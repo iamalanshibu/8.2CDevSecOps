@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     stages {
+
         stage('Build') {
             steps {
                 echo '=== BUILD STAGE ==='
@@ -20,6 +21,17 @@ pipeline {
                 success {
                     archiveArtifacts artifacts: '*.tgz', fingerprint: true
                 }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo '=== TEST STAGE ==='
+                echo 'Running automated unit tests...'
+
+                bat 'node --test --test-reporter=spec tests/hd-pipeline.test.js'
+
+                echo 'All automated tests passed successfully.'
             }
         }
     }
