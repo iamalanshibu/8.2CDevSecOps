@@ -1,10 +1,11 @@
 pipeline {
     agent any
-    
+
     environment {
         JAVA_HOME = 'C:\\Users\\hp\\AppData\\Local\\Programs\\Eclipse Adoptium\\jdk-21.0.12.101-hotspot'
         PATH = "${JAVA_HOME}\\bin;${env.PATH}"
     }
+
     stages {
 
         stage('Build') {
@@ -56,7 +57,47 @@ pipeline {
                     '''
                 }
 
-                echo 'SonarCloud analysis completed.'
+                echo 'SonarCloud analysis completed successfully.'
+            }
+        }
+
+        stage('Security') {
+            steps {
+                echo '=== SECURITY STAGE ==='
+                echo 'Running automated dependency vulnerability scan using npm audit...'
+
+                script {
+                    def auditStatus = bat(
+                        returnStatus: true,
+                        script: 'npm audit'
+                    )
+
+                    echo "npm audit finished with exit code: ${auditStatus}"
+
+                    if (auditStatus != 0) {
+                        echo 'Security vulnerabilities were detected.'
+                        echo 'The pipeline will continue so the findings can be reviewed and documented.'
+                    } else {
+                        echo 'No dependency vulnerabilities were detected.'
+                    }
+
+                    bat(
+                        returnStatus: true,
+                        script: 'npm audit --json > npm-audit.json'
+                    )
+                }
+
+                echo 'Security analysis completed.'
+            }
+
+            post {
+                always {
+                    archiveArtifacts(
+                        artifacts: 'npm-audit.json',
+                        allowEmptyArchive: true,
+                        fingerprint: true
+                    )
+                }
             }
         }
     }
