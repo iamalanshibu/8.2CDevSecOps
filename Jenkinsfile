@@ -34,5 +34,26 @@ pipeline {
                 echo 'All automated tests passed successfully.'
             }
         }
+
+        stage('Code Quality') {
+            steps {
+                echo '=== CODE QUALITY STAGE ==='
+                echo 'Running SonarCloud code quality analysis...'
+
+                withCredentials([
+                    string(
+                        credentialsId: 'SONAR_TOKEN',
+                        variable: 'SONAR_TOKEN'
+                    )
+                ]) {
+                    bat '''
+                    npx sonar-scanner ^
+                    -Dsonar.token=%SONAR_TOKEN%
+                    '''
+                }
+
+                echo 'SonarCloud analysis completed.'
+            }
+        }
     }
 }
