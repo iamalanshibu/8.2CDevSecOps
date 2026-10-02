@@ -18,13 +18,19 @@ pipeline {
                 echo 'Installing project dependencies...'
                 bat 'npm install'
 
+                echo 'Removing previous build artefacts...'
+                bat(returnStatus: true, script: 'del /Q *.tgz')
+
                 echo 'Creating application build artefact...'
                 bat 'npm pack'
             }
 
             post {
                 success {
-                    archiveArtifacts artifacts: '*.tgz', fingerprint: true
+                    archiveArtifacts(
+                        artifacts: '*.tgz',
+                        fingerprint: true
+                    )
                 }
             }
         }
@@ -96,6 +102,102 @@ pipeline {
                         artifacts: 'npm-audit.json',
                         allowEmptyArchive: true,
                         fingerprint: true
+                    )
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo '=== DEPLOY STAGE ==='
+                echo 'Deploying application to Docker staging environment...'
+
+                bat 'docker --version'
+
+                script {
+                    echo 'Cleaning previous staging containers...'
+
+                    bat(
+                        returnStatus: true,
+                        script: 'docker rm -f sit223-goof-staging'
+                    )
+
+                    bat(
+                        returnStatus: true,
+                        script: 'docker rm -f sit223-goof-mongo'
+                    )
+
+                    bat(
+                        returnStatus: true,
+                        script: 'docker network rm sit223-hd-network'
+                    )
+                }
+
+                echo 'Creating Docker staging network...'
+                bat 'docker network create sit223-hd-network'
+
+                echo 'Starting MongoDB staging database...'
+                bat '''
+                docker run -d ^
+                --name sit223-goof-mongo ^
+                --network sit223-hd-network ^
+                mongo:3
+                '''
+
+                echo 'Building staging application image...'
+                bat 'docker build -t sit223-goof:staging .'
+
+                echo 'Starting staging application container...'
+                bat '''
+                docker run -d ^
+                --name sit223-goof-staging ^
+                --network sit223-hd-network ^
+                -e MONGODB_URI=mongodb://sit223-goof-mongo/express-todo ^
+                -p 3001:3001 ^
+                sit223-goof:staging
+                '''
+
+                echo 'Waiting for application startup...'
+                bat 'powershell -NoProfile -Command "Start-Sleep -Seconds 20"'
+
+                echo 'Checking deployed containers...'
+                bat 'docker ps'
+
+                echo 'Performing HTTP deployment smoke test...'
+                bat '''
+                curl --fail --silent --show-error ^
+                http://localhost:3001 ^
+                --output deployment-check.html
+                '''
+
+                echo 'Deployment smoke test passed.'
+                echo 'Application successfully deployed at http://localhost:3001'
+            }
+
+            post {
+                success {
+                    archiveArtifacts(
+                        artifacts: 'deployment-check.html',
+                        fingerprint: true
+                    )
+                }
+
+                failure {
+                    echo 'Deployment failed. Showing container information...'
+
+                    bat(
+                        returnStatus: true,
+                        script: 'docker ps -a'
+                    )
+
+                    bat(
+                        returnStatus: true,
+                        script: 'docker logs sit223-goof-staging'
+                    )
+
+                    bat(
+                        returnStatus: true,
+                        script: 'docker logs sit223-goof-mongo'
                     )
                 }
             }
