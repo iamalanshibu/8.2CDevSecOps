@@ -2,9 +2,24 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                echo 'Repository successfully loaded into Jenkins'
+                echo '=== BUILD STAGE ==='
+
+                bat 'node --version'
+                bat 'npm --version'
+
+                echo 'Installing project dependencies...'
+                bat 'npm install'
+
+                echo 'Creating application build artefact...'
+                bat 'npm pack'
+            }
+
+            post {
+                success {
+                    archiveArtifacts artifacts: '*.tgz', fingerprint: true
+                }
             }
         }
     }
