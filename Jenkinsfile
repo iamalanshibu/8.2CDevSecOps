@@ -1,6 +1,10 @@
 pipeline {
     agent any
-
+    
+    environment {
+        JAVA_HOME = 'C:\\Users\\hp\\AppData\\Local\\Programs\\Eclipse Adoptium\\jdk-21.0.12.101-hotspot'
+        PATH = "${JAVA_HOME}\\bin;${env.PATH}"
+    }
     stages {
 
         stage('Build') {
