@@ -1,0 +1,11 @@
+node_modules
+.git
+.github
+.scannerwork
+*.tgz
+npm-audit.json
+deployment-check.html
+coverage
+.nyc_output
+*.log
+.DS_Store
